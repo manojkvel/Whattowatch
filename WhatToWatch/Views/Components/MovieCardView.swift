@@ -6,7 +6,7 @@ struct MovieCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             AsyncPosterImage(
-                url: movie.posterURL,
+                url: movie.posterImageURL,
                 width: 150,
                 height: 225
             )
@@ -29,16 +29,37 @@ struct MovieCardView: View {
 
                     Spacer()
 
-                    Text(movie.year)
+                    Text(String(movie.year))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
 
-                if !movie.genreIds.isEmpty {
-                    Text(MovieGenre.names(for: Array(movie.genreIds.prefix(2))).joined(separator: ", "))
+                if !movie.genres.isEmpty {
+                    Text(movie.genres.prefix(2).joined(separator: ", "))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                }
+
+                // OTT badges
+                if !movie.ottPlatforms.isEmpty {
+                    HStack(spacing: 3) {
+                        ForEach(movie.ottPlatforms.prefix(2)) { platform in
+                            Text(platform.shortName)
+                                .font(.system(size: 8))
+                                .fontWeight(.medium)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 2)
+                                .background(platform.brandColor.opacity(0.15))
+                                .foregroundStyle(platform.brandColor)
+                                .cornerRadius(3)
+                        }
+                        if movie.ottPlatforms.count > 2 {
+                            Text("+\(movie.ottPlatforms.count - 2)")
+                                .font(.system(size: 8))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
             }
             .frame(width: 150)
@@ -52,7 +73,7 @@ struct MovieListRow: View {
     var body: some View {
         HStack(spacing: 12) {
             AsyncPosterImage(
-                url: movie.posterURL,
+                url: movie.posterImageURL,
                 width: 80,
                 height: 120
             )
@@ -69,28 +90,48 @@ struct MovieListRow: View {
                     Text(movie.formattedRating)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Text("(\(movie.year))")
+                    Text("(\(String(movie.year)))")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    if let lang = movie.language {
+                        Text(lang)
+                            .font(.caption2)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.blue.opacity(0.1))
+                            .foregroundStyle(.blue)
+                            .cornerRadius(3)
+                    }
                 }
 
-                Text(movie.overview)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
+                if !movie.summary.isEmpty {
+                    Text(movie.summary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
 
-                if !movie.genreIds.isEmpty {
+                // Genre tags
+                if !movie.genres.isEmpty {
                     HStack(spacing: 4) {
-                        ForEach(Array(movie.genreIds.prefix(3)), id: \.self) { genreId in
-                            if let genre = MovieGenre.from(id: genreId) {
-                                Text(genre.name)
-                                    .font(.caption2)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(genre.color.opacity(0.2))
-                                    .foregroundStyle(genre.color)
-                                    .cornerRadius(4)
-                            }
+                        ForEach(Array(movie.genres.prefix(3)), id: \.self) { genreName in
+                            let genre = MovieGenre.from(name: genreName)
+                            Text(genreName)
+                                .font(.caption2)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background((genre?.color ?? .gray).opacity(0.2))
+                                .foregroundStyle(genre?.color ?? .gray)
+                                .cornerRadius(4)
+                        }
+                    }
+                }
+
+                // OTT availability
+                if !movie.ottPlatforms.isEmpty {
+                    HStack(spacing: 4) {
+                        ForEach(movie.ottPlatforms) { platform in
+                            OTTBadgeView(platform: platform)
                         }
                     }
                 }

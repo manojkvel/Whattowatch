@@ -1,8 +1,8 @@
 import Foundation
 
-actor RecommendationEngine {
+final class RecommendationEngine {
     static let shared = RecommendationEngine()
-    private let tmdbService = TMDbService.shared
+    private let database = MovieDatabase.shared
 
     private init() {}
 
@@ -13,91 +13,114 @@ actor RecommendationEngine {
         let movies: [Movie]
     }
 
-    func getHomeRecommendations() async throws -> [RecommendationSection] {
+    func getHomeRecommendations() -> [RecommendationSection] {
         var sections: [RecommendationSection] = []
 
-        // Fetch multiple categories concurrently
-        async let trendingTask = tmdbService.fetchTrending()
-        async let popularTask = tmdbService.fetchPopular()
-        async let topRatedTask = tmdbService.fetchTopRated()
-        async let nowPlayingTask = tmdbService.fetchNowPlaying()
-        async let bollywoodTask = tmdbService.fetchIndianMovies(language: "hi")
-        async let tamilTask = tmdbService.fetchIndianMovies(language: "ta")
-        async let teluguTask = tmdbService.fetchIndianMovies(language: "te")
-
-        let trending = try await trendingTask
-        let popular = try await popularTask
-        let topRated = try await topRatedTask
-        let nowPlaying = try await nowPlayingTask
-        let bollywood = try await bollywoodTask
-        let tamil = try await tamilTask
-        let telugu = try await teluguTask
-
+        // Top Rated
+        let topRated = database.allMovies
+            .sorted { $0.rating > $1.rating }
+            .prefix(15)
         sections.append(RecommendationSection(
-            title: "Trending This Week",
-            subtitle: "What everyone's watching right now",
-            movies: trending.results
+            title: "Top Rated on IMDb",
+            subtitle: "Highest rated movies and shows",
+            movies: Array(topRated)
         ))
 
-        sections.append(RecommendationSection(
-            title: "Popular Movies",
-            subtitle: "Most popular picks for you",
-            movies: popular.results
-        ))
-
-        if !nowPlaying.results.isEmpty {
+        // Bollywood
+        let bollywood = database.byLanguage("Hindi")
+            .sorted { $0.rating > $1.rating }
+        if !bollywood.isEmpty {
             sections.append(RecommendationSection(
-                title: "Now Playing",
-                subtitle: "Currently in theaters",
-                movies: nowPlaying.results
+                title: "Bollywood Picks",
+                subtitle: "Best Hindi movies and series",
+                movies: bollywood
             ))
         }
 
-        sections.append(RecommendationSection(
-            title: "Top Rated",
-            subtitle: "Critically acclaimed films",
-            movies: topRated.results
-        ))
-
-        if !bollywood.results.isEmpty {
-            sections.append(RecommendationSection(
-                title: "Bollywood Hits",
-                subtitle: "Popular Hindi movies",
-                movies: bollywood.results
-            ))
-        }
-
-        if !tamil.results.isEmpty {
+        // Tamil Cinema
+        let tamil = database.byLanguage("Tamil")
+            .sorted { $0.rating > $1.rating }
+        if !tamil.isEmpty {
             sections.append(RecommendationSection(
                 title: "Tamil Cinema",
                 subtitle: "Top Tamil movies",
-                movies: tamil.results
+                movies: tamil
             ))
         }
 
-        if !telugu.results.isEmpty {
+        // Telugu Cinema
+        let telugu = database.byLanguage("Telugu")
+            .sorted { $0.rating > $1.rating }
+        if !telugu.isEmpty {
             sections.append(RecommendationSection(
                 title: "Telugu Cinema",
                 subtitle: "Top Telugu movies",
-                movies: telugu.results
+                movies: telugu
+            ))
+        }
+
+        // Malayalam Cinema
+        let malayalam = database.byLanguage("Malayalam")
+            .sorted { $0.rating > $1.rating }
+        if !malayalam.isEmpty {
+            sections.append(RecommendationSection(
+                title: "Malayalam Cinema",
+                subtitle: "Top Malayalam movies",
+                movies: malayalam
+            ))
+        }
+
+        // Hollywood Blockbusters
+        let hollywood = database.byLanguage("English")
+            .sorted { $0.rating > $1.rating }
+        if !hollywood.isEmpty {
+            sections.append(RecommendationSection(
+                title: "Hollywood Blockbusters",
+                subtitle: "Top English movies on Indian OTTs",
+                movies: hollywood
+            ))
+        }
+
+        // Action Picks
+        let action = database.byGenre("Action")
+            .sorted { $0.rating > $1.rating }
+            .prefix(12)
+        if !action.isEmpty {
+            sections.append(RecommendationSection(
+                title: "Action Packed",
+                subtitle: "Adrenaline-fueled picks",
+                movies: Array(action)
+            ))
+        }
+
+        // Drama
+        let drama = database.byGenre("Drama")
+            .sorted { $0.rating > $1.rating }
+            .prefix(12)
+        if !drama.isEmpty {
+            sections.append(RecommendationSection(
+                title: "Compelling Dramas",
+                subtitle: "Stories that stay with you",
+                movies: Array(drama)
             ))
         }
 
         return sections
     }
 
-    func getRecommendationsForGenre(_ genre: MovieGenre) async throws -> [Movie] {
-        let response = try await tmdbService.fetchByGenre(genreId: genre.rawValue)
-        return response.results
+    func moviesForGenre(_ genre: MovieGenre) -> [Movie] {
+        database.byGenre(genre.name).sorted { $0.rating > $1.rating }
     }
 
-    func getRecommendationsForPlatform(_ platform: OTTPlatform) async throws -> [Movie] {
-        let response = try await tmdbService.fetchByProvider(providerId: platform.tmdbProviderId)
-        return response.results
+    func moviesForPlatform(_ platform: OTTPlatform) -> [Movie] {
+        database.byPlatform(platform).sorted { $0.rating > $1.rating }
     }
 
-    func getSimilarMovies(to movieId: Int) async throws -> [Movie] {
-        let response = try await tmdbService.fetchSimilar(movieId: movieId)
-        return response.results
+    func similar(to movie: Movie) -> [Movie] {
+        database.similar(to: movie)
+    }
+
+    func localSearch(query: String) -> [Movie] {
+        database.search(query: query)
     }
 }

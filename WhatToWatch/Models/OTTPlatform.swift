@@ -1,31 +1,17 @@
 import Foundation
 import SwiftUI
 
-enum OTTPlatform: Int, CaseIterable, Identifiable {
-    case netflix = 8
-    case primeVideo = 119
-    case hotstar = 122
-    case lionsgatePlus = 337
-    case sonyliv = 237
-    case zee5 = 232
-    case aha = 532
+enum OTTPlatform: String, CaseIterable, Identifiable, Codable {
+    case netflix = "Netflix"
+    case primeVideo = "Prime Video"
+    case hotstar = "Hotstar"
+    case lionsgatePlus = "Lionsgate Play"
+    case sonyliv = "SonyLIV"
+    case zee5 = "ZEE5"
+    case aha = "aha"
 
-    var id: Int { rawValue }
-
-    // TMDb provider IDs for India region
-    var tmdbProviderId: Int { rawValue }
-
-    var name: String {
-        switch self {
-        case .netflix: return "Netflix"
-        case .primeVideo: return "Prime Video"
-        case .hotstar: return "Hotstar"
-        case .lionsgatePlus: return "Lionsgate Play"
-        case .sonyliv: return "SonyLIV"
-        case .zee5: return "ZEE5"
-        case .aha: return "aha"
-        }
-    }
+    var id: String { rawValue }
+    var name: String { rawValue }
 
     var brandColor: Color {
         switch self {
@@ -51,11 +37,29 @@ enum OTTPlatform: Int, CaseIterable, Identifiable {
         }
     }
 
-    static func from(providerId: Int) -> OTTPlatform? {
-        return OTTPlatform(rawValue: providerId)
+    var iconLetter: String {
+        switch self {
+        case .netflix: return "N"
+        case .primeVideo: return "P"
+        case .hotstar: return "H"
+        case .lionsgatePlus: return "L"
+        case .sonyliv: return "S"
+        case .zee5: return "Z"
+        case .aha: return "a"
+        }
     }
 
-    static func matchingPlatforms(from providers: [WatchProvider]) -> [OTTPlatform] {
-        return providers.compactMap { OTTPlatform.from(providerId: $0.providerId) }
+    static func fromName(_ name: String) -> OTTPlatform? {
+        let lowered = name.lowercased().trimmingCharacters(in: .whitespaces)
+        switch lowered {
+        case "netflix": return .netflix
+        case "prime video", "amazon prime video", "prime", "amazon prime": return .primeVideo
+        case "hotstar", "disney+ hotstar", "disney+hotstar", "jiohotstar", "jio hotstar": return .hotstar
+        case "lionsgate play", "lionsgateplay", "lionsgate+", "lionsgate": return .lionsgatePlus
+        case "sonyliv", "sony liv", "sony": return .sonyliv
+        case "zee5", "z5": return .zee5
+        case "aha": return .aha
+        default: return nil
+        }
     }
 }

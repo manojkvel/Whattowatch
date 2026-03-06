@@ -2,105 +2,131 @@ import SwiftUI
 
 struct MovieDetailView: View {
     @ObservedObject var viewModel: MovieViewModel
-    let movieId: Int
+    let movie: Movie
 
     var body: some View {
-        Group {
-            if viewModel.isLoadingDetail {
-                ProgressView("Loading movie details...")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let movie = viewModel.selectedMovieDetail {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        // Backdrop
-                        backdropSection(movie)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // Poster header
+                posterSection
 
-                        VStack(alignment: .leading, spacing: 20) {
-                            // Title and meta
-                            titleSection(movie)
+                VStack(alignment: .leading, spacing: 20) {
+                    // Title and meta
+                    titleSection
 
-                            // Rating
-                            ratingSection(movie)
+                    // IMDb Rating
+                    ratingSection
 
-                            // Genres
-                            genreSection(movie)
+                    // Genres
+                    genreSection
 
-                            // Tagline
-                            if let tagline = movie.tagline, !tagline.isEmpty {
-                                Text("\"\(tagline)\"")
-                                    .font(.subheadline)
-                                    .italic()
-                                    .foregroundStyle(.secondary)
+                    // Summary
+                    if !movie.summary.isEmpty {
+                        summarySection
+                    }
+
+                    // Cast & Director
+                    creditsSection
+
+                    // Where to Watch
+                    OTTAvailabilityView(platforms: movie.ottPlatforms)
+
+                    // IMDb Link
+                    if let url = movie.imdbURL {
+                        Link(destination: url) {
+                            HStack {
+                                Image(systemName: "link")
+                                Text("View on IMDb")
+                                Spacer()
+                                Image(systemName: "arrow.up.right.square")
                             }
-
-                            // Summary
-                            summarySection(movie)
-
-                            // Where to Watch
-                            OTTAvailabilityView(platforms: viewModel.selectedMoviePlatforms)
-
-                            // Similar Movies
-                            if !viewModel.similarMovies.isEmpty {
-                                similarSection
-                            }
+                            .font(.subheadline)
+                            .padding()
+                            .background(Color.yellow.opacity(0.15))
+                            .foregroundStyle(.primary)
+                            .cornerRadius(12)
                         }
-                        .padding(.horizontal)
+                    }
+
+                    // Similar Movies
+                    if !viewModel.similarMovies.isEmpty {
+                        similarSection
                     }
                 }
-            } else {
-                VStack(spacing: 12) {
-                    Image(systemName: "film")
-                        .font(.largeTitle)
-                        .foregroundStyle(.secondary)
-                    Text("Movie not found")
-                        .foregroundStyle(.secondary)
-                }
+                .padding(.horizontal)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
-        .task {
-            await viewModel.loadMovieDetail(movieId: movieId)
+        .onAppear {
+            viewModel.selectMovie(movie)
         }
     }
 
-    private func backdropSection(_ movie: MovieDetail) -> some View {
+    private var posterSection: some View {
         ZStack(alignment: .bottomLeading) {
             AsyncPosterImage(
-                url: movie.backdropURL ?? movie.posterURL,
+                url: movie.posterImageURL,
                 width: UIScreen.main.bounds.width,
-                height: 250
+                height: 300
             )
 
             LinearGradient(
-                colors: [.clear, .black.opacity(0.7)],
-                startPoint: .top,
+                colors: [.clear, .black.opacity(0.8)],
+                startPoint: .center,
                 endPoint: .bottom
             )
-            .frame(height: 120)
+            .frame(height: 150)
             .frame(maxHeight: .infinity, alignment: .bottom)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(movie.title)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.white)
+                HStack(spacing: 8) {
+                    Text(String(movie.year))
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.8))
+                    if let runtime = movie.runtime {
+                        Text(runtime)
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.8))
+                    }
+                    if let language = movie.language {
+                        Text(language)
+                            .font(.caption)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.white.opacity(0.2))
+                            .foregroundStyle(.white)
+                            .cornerRadius(4)
+                    }
+                }
+            }
+            .padding()
         }
-        .frame(height: 250)
+        .frame(height: 300)
     }
 
-    private func titleSection(_ movie: MovieDetail) -> some View {
+    private var titleSection: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(movie.title)
                 .font(.title)
                 .fontWeight(.bold)
 
             HStack(spacing: 12) {
-                if let date = movie.releaseDate, date.count >= 4 {
-                    Label(String(date.prefix(4)), systemImage: "calendar")
+                Label(String(movie.year), systemImage: "calendar")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                if let runtime = movie.runtime {
+                    Label(runtime, systemImage: "clock")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
 
-                Label(movie.formattedRuntime, systemImage: "clock")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                if let status = movie.status {
-                    Label(status, systemImage: "info.circle")
+                if let language = movie.language {
+                    Label(language, systemImage: "globe")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -108,66 +134,109 @@ struct MovieDetailView: View {
         }
     }
 
-    private func ratingSection(_ movie: MovieDetail) -> some View {
+    private var ratingSection: some View {
         HStack(spacing: 16) {
             VStack(spacing: 4) {
                 HStack(spacing: 4) {
                     Image(systemName: "star.fill")
                         .foregroundStyle(.yellow)
-                    Text(String(format: "%.1f", movie.voteAverage))
+                    Text(movie.formattedRating)
                         .font(.title2)
                         .fontWeight(.bold)
                     Text("/ 10")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                Text("TMDb Rating")
+                Text("IMDb Rating")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             .padding()
             .background(Color.yellow.opacity(0.1))
             .cornerRadius(12)
+
+            VStack(spacing: 4) {
+                Text(movie.ratingStars)
+                    .font(.title3)
+                Text("Stars")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(Color.orange.opacity(0.1))
+            .cornerRadius(12)
         }
     }
 
-    private func genreSection(_ movie: MovieDetail) -> some View {
+    private var genreSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Genres", systemImage: "tag")
                 .font(.headline)
 
             FlowLayout(spacing: 8) {
-                ForEach(movie.genres) { genre in
-                    let movieGenre = MovieGenre.from(id: genre.id)
+                ForEach(movie.genres, id: \.self) { genreName in
+                    let genre = MovieGenre.from(name: genreName)
                     HStack(spacing: 4) {
-                        if let mg = movieGenre {
-                            Image(systemName: mg.icon)
+                        if let g = genre {
+                            Image(systemName: g.icon)
                                 .font(.caption2)
                         }
-                        Text(genre.name)
+                        Text(genreName)
                             .font(.caption)
                             .fontWeight(.medium)
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background((movieGenre?.color ?? .gray).opacity(0.15))
-                    .foregroundStyle(movieGenre?.color ?? .gray)
+                    .background((genre?.color ?? .gray).opacity(0.15))
+                    .foregroundStyle(genre?.color ?? .gray)
                     .cornerRadius(16)
                 }
             }
         }
     }
 
-    private func summarySection(_ movie: MovieDetail) -> some View {
+    private var summarySection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Summary", systemImage: "text.alignleft")
                 .font(.headline)
 
-            Text(movie.overview)
+            Text(movie.summary)
                 .font(.body)
                 .lineSpacing(4)
                 .foregroundStyle(.primary.opacity(0.9))
         }
+    }
+
+    private var creditsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Credits", systemImage: "person.2")
+                .font(.headline)
+
+            if let director = movie.director {
+                HStack(alignment: .top) {
+                    Text("Director")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 70, alignment: .leading)
+                    Text(director)
+                        .font(.subheadline)
+                }
+            }
+
+            if let cast = movie.cast {
+                HStack(alignment: .top) {
+                    Text("Cast")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 70, alignment: .leading)
+                    Text(cast)
+                        .font(.subheadline)
+                }
+            }
+        }
+        .padding()
+        .background(Color.gray.opacity(0.08))
+        .cornerRadius(12)
     }
 
     private var similarSection: some View {
@@ -177,11 +246,11 @@ struct MovieDetailView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 16) {
-                    ForEach(viewModel.similarMovies) { movie in
+                    ForEach(viewModel.similarMovies) { similar in
                         NavigationLink {
-                            MovieDetailView(viewModel: viewModel, movieId: movie.id)
+                            MovieDetailView(viewModel: viewModel, movie: similar)
                         } label: {
-                            MovieCardView(movie: movie)
+                            MovieCardView(movie: similar)
                         }
                         .buttonStyle(.plain)
                     }
@@ -190,6 +259,8 @@ struct MovieDetailView: View {
         }
     }
 }
+
+// MARK: - Flow Layout
 
 struct FlowLayout: Layout {
     var spacing: CGFloat = 8

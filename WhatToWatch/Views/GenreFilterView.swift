@@ -8,6 +8,7 @@ struct GenreFilterView: View {
         NavigationStack {
             List {
                 ForEach(MovieGenre.allCases) { genre in
+                    let count = MovieDatabase.shared.byGenre(genre.name).count
                     HStack(spacing: 12) {
                         Image(systemName: genre.icon)
                             .font(.title3)
@@ -19,6 +20,12 @@ struct GenreFilterView: View {
                             .fontWeight(.medium)
 
                         Spacer()
+
+                        if count > 0 {
+                            Text("\(count)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
 
                         Image(systemName: "chevron.right")
                             .font(.caption)

@@ -9,9 +9,7 @@ struct HomeView: View {
         NavigationStack {
             Group {
                 if viewModel.isLoading && viewModel.sections.isEmpty {
-                    loadingView
-                } else if let error = viewModel.errorMessage, viewModel.sections.isEmpty {
-                    errorView(error)
+                    ProgressView("Finding movies for you...")
                 } else {
                     contentView
                 }
@@ -25,7 +23,6 @@ struct HomeView: View {
                         } label: {
                             Label("Browse by Genre", systemImage: "theatermasks")
                         }
-
                         Button {
                             showingPlatformFilter = true
                         } label: {
@@ -42,57 +39,20 @@ struct HomeView: View {
             .sheet(isPresented: $showingPlatformFilter) {
                 PlatformBrowseView(viewModel: viewModel)
             }
-            .task {
+            .onAppear {
                 if viewModel.sections.isEmpty {
-                    await viewModel.loadHomeData()
+                    viewModel.loadHomeData()
                 }
             }
-            .refreshable {
-                await viewModel.loadHomeData()
-            }
         }
-    }
-
-    private var loadingView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text("Finding movies for you...")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func errorView(_ error: String) -> some View {
-        VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.largeTitle)
-                .foregroundStyle(.orange)
-            Text("Something went wrong")
-                .font(.headline)
-            Text(error)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            Button("Try Again") {
-                Task { await viewModel.loadHomeData() }
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .padding()
     }
 
     private var contentView: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 24) {
-                // Quick genre chips
                 genreChips
-
-                // OTT platform quick access
                 ottQuickAccess
 
-                // Movie sections
                 ForEach(viewModel.sections) { section in
                     movieSection(section)
                 }
@@ -150,8 +110,8 @@ struct HomeView: View {
                                     .fill(platform.brandColor)
                                     .frame(width: 56, height: 56)
                                     .overlay {
-                                        Text(String(platform.shortName.prefix(2)))
-                                            .font(.headline)
+                                        Text(platform.iconLetter)
+                                            .font(.title2)
                                             .fontWeight(.bold)
                                             .foregroundStyle(.white)
                                     }
@@ -186,7 +146,7 @@ struct HomeView: View {
                 LazyHStack(spacing: 16) {
                     ForEach(section.movies) { movie in
                         NavigationLink {
-                            MovieDetailView(viewModel: viewModel, movieId: movie.id)
+                            MovieDetailView(viewModel: viewModel, movie: movie)
                         } label: {
                             MovieCardView(movie: movie)
                         }
@@ -199,69 +159,75 @@ struct HomeView: View {
     }
 }
 
+// MARK: - Genre Movies View
+
 struct GenreMoviesView: View {
     @ObservedObject var viewModel: MovieViewModel
     let genre: MovieGenre
 
     var body: some View {
-        Group {
-            if viewModel.isLoading {
-                ProgressView("Loading \(genre.name) movies...")
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(viewModel.genreMovies) { movie in
-                            NavigationLink {
-                                MovieDetailView(viewModel: viewModel, movieId: movie.id)
-                            } label: {
-                                MovieListRow(movie: movie)
-                                    .padding(.horizontal)
-                            }
-                            .buttonStyle(.plain)
-                            Divider().padding(.horizontal)
-                        }
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(viewModel.genreMovies) { movie in
+                    NavigationLink {
+                        MovieDetailView(viewModel: viewModel, movie: movie)
+                    } label: {
+                        MovieListRow(movie: movie)
+                            .padding(.horizontal)
                     }
+                    .buttonStyle(.plain)
+                    Divider().padding(.horizontal)
+                }
+
+                if viewModel.genreMovies.isEmpty {
+                    Text("No \(genre.name) movies found")
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 40)
                 }
             }
         }
         .navigationTitle(genre.name)
-        .task {
-            await viewModel.loadGenreMovies(genre: genre)
+        .onAppear {
+            viewModel.loadGenreMovies(genre: genre)
         }
     }
 }
+
+// MARK: - Platform Movies View
 
 struct PlatformMoviesView: View {
     @ObservedObject var viewModel: MovieViewModel
     let platform: OTTPlatform
 
     var body: some View {
-        Group {
-            if viewModel.isLoading {
-                ProgressView("Loading \(platform.name) movies...")
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(viewModel.platformMovies) { movie in
-                            NavigationLink {
-                                MovieDetailView(viewModel: viewModel, movieId: movie.id)
-                            } label: {
-                                MovieListRow(movie: movie)
-                                    .padding(.horizontal)
-                            }
-                            .buttonStyle(.plain)
-                            Divider().padding(.horizontal)
-                        }
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(viewModel.platformMovies) { movie in
+                    NavigationLink {
+                        MovieDetailView(viewModel: viewModel, movie: movie)
+                    } label: {
+                        MovieListRow(movie: movie)
+                            .padding(.horizontal)
                     }
+                    .buttonStyle(.plain)
+                    Divider().padding(.horizontal)
+                }
+
+                if viewModel.platformMovies.isEmpty {
+                    Text("No movies found on \(platform.name)")
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 40)
                 }
             }
         }
         .navigationTitle(platform.name)
-        .task {
-            await viewModel.loadPlatformMovies(platform: platform)
+        .onAppear {
+            viewModel.loadPlatformMovies(platform: platform)
         }
     }
 }
+
+// MARK: - Platform Browse Sheet
 
 struct PlatformBrowseView: View {
     @ObservedObject var viewModel: MovieViewModel
@@ -276,8 +242,8 @@ struct PlatformBrowseView: View {
                             .fill(platform.brandColor)
                             .frame(width: 44, height: 44)
                             .overlay {
-                                Text(String(platform.shortName.prefix(2)))
-                                    .font(.subheadline)
+                                Text(platform.iconLetter)
+                                    .font(.title3)
                                     .fontWeight(.bold)
                                     .foregroundStyle(.white)
                             }
@@ -286,6 +252,9 @@ struct PlatformBrowseView: View {
                             Text(platform.name)
                                 .font(.body)
                                 .fontWeight(.medium)
+                            Text("\(MovieDatabase.shared.byPlatform(platform).count) titles")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
                     .padding(.vertical, 4)
