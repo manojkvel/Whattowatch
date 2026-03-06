@@ -13,13 +13,14 @@ final class RecommendationEngine {
         let movies: [Movie]
     }
 
-    func getHomeRecommendations() -> [RecommendationSection] {
+    func getHomeRecommendations(limit: Int? = nil) -> [RecommendationSection] {
         var sections: [RecommendationSection] = []
+        let cap = 8 // max movies per horizontal row
 
         // Top Rated
         let topRated = database.allMovies
             .sorted { $0.rating > $1.rating }
-            .prefix(15)
+            .prefix(cap)
         sections.append(RecommendationSection(
             title: "Top Rated on IMDb",
             subtitle: "Highest rated movies and shows",
@@ -29,62 +30,67 @@ final class RecommendationEngine {
         // Bollywood
         let bollywood = database.byLanguage("Hindi")
             .sorted { $0.rating > $1.rating }
+            .prefix(cap)
         if !bollywood.isEmpty {
             sections.append(RecommendationSection(
                 title: "Bollywood Picks",
                 subtitle: "Best Hindi movies and series",
-                movies: bollywood
+                movies: Array(bollywood)
             ))
         }
 
         // Tamil Cinema
         let tamil = database.byLanguage("Tamil")
             .sorted { $0.rating > $1.rating }
+            .prefix(cap)
         if !tamil.isEmpty {
             sections.append(RecommendationSection(
                 title: "Tamil Cinema",
                 subtitle: "Top Tamil movies",
-                movies: tamil
+                movies: Array(tamil)
             ))
         }
 
         // Telugu Cinema
         let telugu = database.byLanguage("Telugu")
             .sorted { $0.rating > $1.rating }
+            .prefix(cap)
         if !telugu.isEmpty {
             sections.append(RecommendationSection(
                 title: "Telugu Cinema",
                 subtitle: "Top Telugu movies",
-                movies: telugu
+                movies: Array(telugu)
             ))
         }
 
         // Malayalam Cinema
         let malayalam = database.byLanguage("Malayalam")
             .sorted { $0.rating > $1.rating }
+            .prefix(cap)
         if !malayalam.isEmpty {
             sections.append(RecommendationSection(
                 title: "Malayalam Cinema",
                 subtitle: "Top Malayalam movies",
-                movies: malayalam
+                movies: Array(malayalam)
             ))
         }
 
         // Hollywood Blockbusters
         let hollywood = database.byLanguage("English")
             .sorted { $0.rating > $1.rating }
+            .prefix(cap)
         if !hollywood.isEmpty {
             sections.append(RecommendationSection(
                 title: "Hollywood Blockbusters",
                 subtitle: "Top English movies on Indian OTTs",
-                movies: hollywood
+                movies: Array(hollywood)
             ))
         }
 
         // Action Picks
         let action = database.byGenre("Action")
             .sorted { $0.rating > $1.rating }
-            .prefix(12)
+            .prefix(cap)
         if !action.isEmpty {
             sections.append(RecommendationSection(
                 title: "Action Packed",
@@ -96,7 +102,7 @@ final class RecommendationEngine {
         // Drama
         let drama = database.byGenre("Drama")
             .sorted { $0.rating > $1.rating }
-            .prefix(12)
+            .prefix(cap)
         if !drama.isEmpty {
             sections.append(RecommendationSection(
                 title: "Compelling Dramas",
@@ -105,6 +111,9 @@ final class RecommendationEngine {
             ))
         }
 
+        if let limit {
+            return Array(sections.prefix(limit))
+        }
         return sections
     }
 

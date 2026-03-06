@@ -30,10 +30,14 @@ struct Movie: Identifiable, Codable, Hashable {
     }
 
     var posterImageURL: URL? {
+        posterURL(width: 200)
+    }
+
+    func posterURL(width: Int) -> URL? {
         guard let urlString = posterURL else { return nil }
         let resized = urlString.replacingOccurrences(
             of: #"\._V1_.*\.jpg"#,
-            with: "._V1_SX400.jpg",
+            with: "._V1_SX\(width).jpg",
             options: .regularExpression
         )
         return URL(string: resized)
@@ -80,7 +84,7 @@ struct IMDbSuggestion: Codable, Identifiable {
         guard let urlString = i?.imageUrl else { return nil }
         let resized = urlString.replacingOccurrences(
             of: #"\._V1_.*\.jpg"#,
-            with: "._V1_SX400.jpg",
+            with: "._V1_SX200.jpg",
             options: .regularExpression
         )
         return URL(string: resized)

@@ -56,6 +56,15 @@ struct HomeView: View {
                 ForEach(viewModel.sections) { section in
                     movieSection(section)
                 }
+
+                // Load remaining sections when user scrolls near bottom
+                if viewModel.hasMoreSections {
+                    Color.clear
+                        .frame(height: 1)
+                        .onAppear {
+                            viewModel.loadMoreSections()
+                        }
+                }
             }
             .padding(.vertical)
         }

@@ -19,10 +19,25 @@ final class MovieViewModel: ObservableObject {
     private let imdbService = IMDbService.shared
     private let database = MovieDatabase.shared
 
+    private var allSections: [RecommendationEngine.RecommendationSection] = []
+    private let initialSectionCount = 3
+
+    var hasMoreSections: Bool {
+        sections.count < allSections.count
+    }
+
     func loadHomeData() {
         isLoading = true
-        sections = engine.getHomeRecommendations()
+        allSections = engine.getHomeRecommendations()
+        // Show first few sections immediately for fast startup
+        sections = Array(allSections.prefix(initialSectionCount))
         isLoading = false
+    }
+
+    func loadMoreSections() {
+        guard hasMoreSections else { return }
+        let next = min(sections.count + 2, allSections.count)
+        sections = Array(allSections.prefix(next))
     }
 
     func searchMovies() async {
